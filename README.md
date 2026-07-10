@@ -15,98 +15,98 @@
 
 ---
 
-Claude is powerful out of the box, but it starts every session not knowing you: your stack, your coding style, or how you like to be corrected. agent-persona learns that from your own Claude sessions, the files you edit, and your shell history, builds a persona on this machine, and injects it into every new session.
+Claude is powerful out of the box, but it starts every session not knowing you: your stack, your coding style, or how you like to be corrected. agent-persona learns that from your own Claude sessions and shell history, builds a persona on this machine, and injects it into every new session.
 
-No configuration and no manual writing required. To set something explicitly, run `agent-persona customize`.
+No configuration, no manual writing, and no API key required.
 
 ## Install
 
 ```bash
 pipx install agent-persona
-agent-persona install
+agent-persona run
 ```
 
-From the next session on, it builds your persona.
+`run` builds your persona and asks whether to bind it to all future sessions. Say yes and you are done.
 
 ## What it learns
 
-Everything below is free and automatic (no LLM, no cost), read from your session logs, edited files, and shell history:
+Python collects the raw data deterministically (session transcripts, tool usage, shell history, all secret-redacted). Then Claude itself, via `claude --print` using the Claude Code login you already have, synthesizes a structured persona with 8 layers:
 
-- **Stack:** the languages, frameworks, and tools you actually use, frequency-weighted, with tech you stop using fading over time.
-- **Coding style:** indent and test frequency, sampled from files you edit.
-- **Request patterns:** recurring follow-up habits (for example, after a bug fix you usually ask why it happened).
-- **Corrections:** when you redirect Claude ("revert that", "too complex", "don't add that yet"), recurring redirects become guidance such as "prefer the simplest solution" or "do only what's asked".
+- **Stable identity:** who you are as an engineer.
+- **Knowledge map:** star ratings per technology, what to explain and what to skip.
+- **Thinking style:** how you learn and what order explanations should follow.
+- **Output preferences:** formats you want, formats that annoy you.
+- **Decision framework:** what you optimise for when choosing between approaches.
+- **Curiosity profile:** the kinds of questions you actually ask.
+- **Communication:** what Claude should and should never do.
+- **Current projects:** volatile work context, replaced every couple of months.
 
-You can also set preferences yourself with `agent-persona customize`. Manual preferences carry full confidence and are always injected first.
+No keyword matching and no NLP heuristics: Claude reads your actual history and writes the profile.
 
 ## How it works
 
-A rule engine decays stale signals, drops low-confidence ones, then ranks and caps what gets injected, so Claude receives the right context rather than a dump.
+```
+~/.claude/projects/**/*.jsonl + shell history
+        |
+Deterministic collectors (pure Python)
+        |
+claude --print
+        |
+~/.agent-persona/persona.md
+        |
+~/.claude/CLAUDE.md @import
+```
 
-Three hooks wire into `~/.claude/settings.json`:
+Injection uses Claude Code's native `@file` import: one marker-delimited line in `~/.claude/CLAUDE.md` that Claude reads at every session start. A single Stop hook in `~/.claude/settings.json` re-runs synthesis when a session ends, so the persona grows as you work.
 
-- **SessionStart:** compiles your persona live from `profile.json` and injects it before you type.
-- **Stop:** runs the analysis pipeline and updates `profile.json` when a session ends.
-- **PostToolUse:** logs each file edit in the background. Never blocks your session.
+## Your persona
 
-agent-persona injects only through the SessionStart hook. It never writes to your `~/.claude/CLAUDE.md`.
-
-## Your profile
-
-Everything lives in `~/.agent-persona/`, on this machine, as plain JSON you can read and edit:
+Everything lives in `~/.agent-persona/`, on this machine, as plain files you can read and edit:
 
 ```
 ~/.agent-persona/
-├── profile.json           # your persona, the single source of truth
-├── state.json             # tracks which sessions were processed
-└── history/
-    └── files_edited.jsonl # rolling 90-day log of edited files
+├── persona.md   # your persona, the single source of truth
+└── state.json   # tracks which sessions were processed
 ```
 
-The persona is compiled live from `profile.json` at session start, so there is no generated file to keep in sync.
+To move machines, copy `persona.md` across and run `agent-persona install`.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `agent-persona install` | Register hooks and create `~/.agent-persona/`. |
-| `agent-persona uninstall [--purge]` | Remove hooks. With `--purge`, also wipe the profile store. |
-| `agent-persona customize` | Set what Claude should know, how it should respond, and mute learned signals. |
-| `agent-persona status` | Show your current persona: stack, preferences, sessions processed. |
-| `agent-persona show` | Print the persona exactly as it is injected at session start. |
-| `agent-persona analyze` | Re-run analysis on demand. |
-| `agent-persona export [path]` | Export your profile to move to another machine. |
-| `agent-persona import [path]` | Merge an exported profile into this machine. |
-| `agent-persona reset --confirm` | Wipe the profile and start fresh. |
+| `agent-persona run` | Scrape new sessions, synthesise persona.md, offer to bind. |
+| `agent-persona show` | Print the persona exactly as Claude reads it. |
+| `agent-persona install` | Bind persona.md to all future sessions and register the Stop hook. |
+| `agent-persona uninstall [--purge]` | Remove binding and hook. With `--purge`, also wipe `~/.agent-persona`. |
 | `agent-persona doctor` | Check install health. |
 
 ## Detach anytime
 
-agent-persona is a layer, not a file edit, so backing out is clean:
+agent-persona adds one marker-delimited block to `~/.claude/CLAUDE.md` and one Stop hook. `agent-persona uninstall` removes exactly those and nothing else; your own CLAUDE.md content is never touched. Add `--purge` to wipe the persona store too.
 
-- Mute a single learned signal with `agent-persona customize`, then "Mute / unmute learned signals".
-- Remove everything with `agent-persona uninstall --purge`.
 
-Because it never touches your own files, nothing is left behind.
+## Privacy
 
-## Move your persona to a new machine
+- Your data never leaves this machine except the synthesis call to `claude --print`, your already-authenticated Claude Code instance.
+- API keys, tokens, and passwords are redacted from every data stream before synthesis.
+- No cloud, no telemetry, no accounts.
+
+## Fallback: API key
+
+To run synthesis headless (CI, cron) without a Claude Code session, set `ANTHROPIC_API_KEY` and it falls back to the Anthropic API:
 
 ```bash
-# old machine
-agent-persona export ~/persona.json
-
-# new machine
-agent-persona install
-agent-persona import ~/persona.json
+pip install "agent-persona[api]"
+export ANTHROPIC_API_KEY=sk-ant-...
+agent-persona run
 ```
 
-Profiles merge, so nothing is lost from either machine.
+## What it does not do
 
-## What it does not do (v1)
-
-- No cloud. Your persona never leaves this machine unless you export it.
-- No writes to your `CLAUDE.md`, or to anything outside `~/.agent-persona/`.
+- No writes to your project files or code.
 - One global persona, not per-project.
+- No GUI.
 
 ## Requirements
 
