@@ -28,6 +28,30 @@ agent-persona run
 
 `run` builds your persona and asks whether to bind it to all future sessions. Say yes and you are done.
 
+## What it looks like
+
+An excerpt from a real generated persona (`agent-persona show`):
+
+```markdown
+### Layer 1 - Stable Identity
+- CLI-first: lives entirely in the terminal (git, ssh, shell scripts, CLI agents)
+- Ships fast, verifies after: tests the published artifact rather than simulating locally
+- Trusts `git log` as ground truth: inspects history after nearly every pull
+- Prefers small, confirmable edits over large sweeping changes
+
+### Layer 2 - Technical Knowledge Map
+**Git** ★★★★☆
+Needs: worktree workflows, multi-remote sync edge cases, history rewriting risks
+Skip: what pull/stash/log do, basic branching, commit syntax
+
+### Negative Prompt
+- Never restate the user's request before acting on it.
+- Never present a menu of options when asked for an opinion. Recommend one.
+- Never treat typos as blockers. Infer intent and proceed.
+```
+
+Claude reads this at the start of every session, so it stops explaining basics you know, pitches answers at your level, and avoids the things that annoy you.
+
 ## What it learns
 
 Python collects the raw data deterministically (session transcripts, tool usage, shell history, all secret-redacted). Then Claude itself, via `claude --print` using the Claude Code login you already have, synthesizes a structured persona with 8 layers:
