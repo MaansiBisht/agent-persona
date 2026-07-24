@@ -21,17 +21,18 @@ def main():
             sid = payload.get("session_id")
             if isinstance(sid, str) and sid:
                 session_id = sid
-    except Exception:
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError):
         pass
 
     try:
+        from pathlib import Path
+
         from agent_persona.collectors import (
             DEFAULT_STORE,
             PERSONA_PATH,
             find_unprocessed_transcripts,
         )
         from agent_persona.harness import run
-        from pathlib import Path
 
         transcripts = find_unprocessed_transcripts(
             claude_dir=Path("~/.claude").expanduser(),
@@ -46,7 +47,7 @@ def main():
             )
             if status == "error":
                 print(f"agent-persona: {message}", file=sys.stderr)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — hook must never crash the host CLI
         print(f"agent-persona: {e}", file=sys.stderr)
 
 

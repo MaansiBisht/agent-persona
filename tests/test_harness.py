@@ -60,7 +60,7 @@ class TestRun:
         _patch_collection(monkeypatch, _fake_transcripts(tmp_path, ["s1", "s2"]))
         monkeypatch.setattr(harness, "_call_claude_cli", lambda prompt: "## Developer Persona\nok")
 
-        status, message = harness.run(store=store, persona_path=persona)
+        status, _ = harness.run(store=store, persona_path=persona)
 
         assert status == "updated"
         assert persona.read_text(encoding="utf-8").startswith("## Developer Persona")
@@ -93,7 +93,11 @@ class TestRun:
     def test_existing_persona_fed_back_into_prompt(self, tmp_path, monkeypatch):
         store = tmp_path / "store"
         persona = tmp_path / "persona.md"
-        persona.write_text("## Developer Persona\nPREVIOUS-CONTENT", encoding="utf-8")
+        persona.write_text(
+            "## Developer Persona\n### Layer 1 — Stable Identity\n"
+            "### Layer 2 — Technical Knowledge Map\nPREVIOUS-CONTENT",
+            encoding="utf-8",
+        )
         _patch_collection(monkeypatch, _fake_transcripts(tmp_path, ["s1"]))
 
         seen = {}
@@ -109,6 +113,26 @@ class TestRun:
         assert status == "updated"
         assert "PREVIOUS-CONTENT" in seen["prompt"]
         assert "<developer_data>" in seen["prompt"]
+
+    def test_malformed_existing_persona_not_fed_back(self, tmp_path, monkeypatch):
+        store = tmp_path / "store"
+        persona = tmp_path / "persona.md"
+        persona.write_text("I refuse to synthesize a persona from this data.", encoding="utf-8")
+        _patch_collection(monkeypatch, _fake_transcripts(tmp_path, ["s1"]))
+
+        seen = {}
+
+        def fake_cli(prompt):
+            seen["prompt"] = prompt
+            return "## Developer Persona\nnew"
+
+        monkeypatch.setattr(harness, "_call_claude_cli", fake_cli)
+
+        status, _ = harness.run(store=store, persona_path=persona)
+
+        assert status == "updated"
+        assert "EXISTING PERSONA" not in seen["prompt"]
+        assert "I refuse to synthesize" not in seen["prompt"]
 
     def test_cli_unavailable_falls_back_to_api(self, tmp_path, monkeypatch):
         store = tmp_path / "store"
