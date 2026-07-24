@@ -243,9 +243,9 @@ def collect_transcript(path: Path) -> tuple[list[str], list[str]]:
             content = message.get("content")
 
             if message.get("role") == "user" and not record.get("isMeta"):
-                if any(marker in line for marker in _NOISE_MARKERS):
-                    continue
                 text = _extract_text(content).strip()
+                if any(marker in text for marker in _NOISE_MARKERS):
+                    continue
                 if text:
                     user_messages.append(_redact_secrets(text))
 

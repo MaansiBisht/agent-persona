@@ -169,7 +169,13 @@ def _call_claude_cli(prompt: str) -> str | None:
         return None
     try:
         result = subprocess.run(
-            ["claude", "--print", "--dangerously-skip-permissions"],
+            [
+                "claude",
+                "--print",
+                "--setting-sources",
+                "",
+                "--dangerously-skip-permissions",
+            ],
             input=prompt,
             capture_output=True,
             text=True,
@@ -200,6 +206,21 @@ def _call_anthropic_api(prompt: str, model: str) -> str | None:
     except Exception:
         pass
     return None
+
+
+def _looks_like_persona(text: str) -> bool:
+    """Reject a persona.md that isn't actually a synthesized persona.
+
+    A bad synthesis run (e.g. the model refusing on suspicious input) can
+    write arbitrary text to persona.md. Since a later run is told to
+    "update and extend" whatever is already there, a malformed file would
+    otherwise self-perpetuate forever. Require at least a couple of the
+    expected layer headers before trusting it as a base to extend.
+    """
+    if not text.strip():
+        return False
+    required_markers = ("## Developer Persona", "Layer 1", "Layer 2")
+    return sum(marker in text for marker in required_markers) >= 2
 
 
 def _build_data_summary(
@@ -287,9 +308,11 @@ def run(
     existing_persona = ""
     if persona_path.exists():
         try:
-            existing_persona = persona_path.read_text(encoding="utf-8")
+            candidate = persona_path.read_text(encoding="utf-8")
         except OSError:
-            existing_persona = ""
+            candidate = ""
+        if _looks_like_persona(candidate):
+            existing_persona = candidate
 
     data_summary = _build_data_summary(
         shell_commands=shell_commands,
