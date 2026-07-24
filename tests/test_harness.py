@@ -60,7 +60,7 @@ class TestRun:
         _patch_collection(monkeypatch, _fake_transcripts(tmp_path, ["s1", "s2"]))
         monkeypatch.setattr(harness, "_call_claude_cli", lambda prompt: "## Developer Persona\nok")
 
-        status, message = harness.run(store=store, persona_path=persona)
+        status, _ = harness.run(store=store, persona_path=persona)
 
         assert status == "updated"
         assert persona.read_text(encoding="utf-8").startswith("## Developer Persona")

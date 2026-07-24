@@ -180,6 +180,7 @@ def _call_claude_cli(prompt: str) -> str | None:
             capture_output=True,
             text=True,
             timeout=120,
+            check=False,
         )
         text = result.stdout.strip()
         return text if text else None
@@ -193,6 +194,9 @@ def _call_anthropic_api(prompt: str, model: str) -> str | None:
         return None
     try:
         import anthropic
+    except ImportError:
+        return None
+    try:
         client = anthropic.Anthropic()
         response = client.messages.create(
             model=model,
@@ -203,7 +207,7 @@ def _call_anthropic_api(prompt: str, model: str) -> str | None:
         for block in response.content:
             if getattr(block, "type", "") == "text":
                 return block.text.strip() or None
-    except Exception:
+    except (anthropic.APIError, OSError):
         pass
     return None
 
@@ -335,8 +339,10 @@ def run(
     if not text:
         return (
             "error",
-            "could not synthesize persona — make sure Claude Code is running "
-            "or set ANTHROPIC_API_KEY",
+            (
+                "could not synthesize persona — make sure Claude Code is running "
+                "or set ANTHROPIC_API_KEY"
+            ),
         )
 
     if not text.strip():

@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from filelock import FileLock
@@ -113,7 +113,7 @@ def mark_processed(session_id: str, state_store: Path) -> None:
         if session_id not in processed:
             processed.append(session_id)
         state["processed_sessions"] = processed[-MAX_PROCESSED_SESSIONS:]
-        state["last_run"] = datetime.now(timezone.utc).isoformat()
+        state["last_run"] = datetime.now(UTC).isoformat()
         _write_state(state_store, state)
 
 
