@@ -54,7 +54,7 @@ Claude reads this at the start of every session, so it stops explaining basics y
 
 ## What it learns
 
-Python collects the raw data deterministically (session transcripts, tool usage, shell history, all secret-redacted). Then Claude itself, via `claude --print` using the Claude Code login you already have, synthesizes a structured persona with 8 layers:
+Python collects the raw data deterministically (session transcripts, tool usage, shell history, all secret-redacted). Then Claude itself, via `claude --print` using the Claude Code login you already have, synthesizes a structured persona:
 
 - **Stable identity:** who you are as an engineer.
 - **Knowledge map:** star ratings per technology, what to explain and what to skip.
@@ -63,7 +63,7 @@ Python collects the raw data deterministically (session transcripts, tool usage,
 - **Decision framework:** what you optimise for when choosing between approaches.
 - **Curiosity profile:** the kinds of questions you actually ask.
 - **Communication:** what Claude should and should never do.
-- **Current projects:** volatile work context, replaced every couple of months.
+- **Hard boundaries:** actions Claude must never take on your behalf.
 
 No keyword matching and no NLP heuristics: Claude reads your actual history and writes the profile.
 
