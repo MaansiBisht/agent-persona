@@ -23,11 +23,17 @@ MAX_SHELL_COMMANDS = 100
 SYSTEM_PROMPT = """You are reading raw data from a developer's Claude Code sessions.
 Your job: write a structured, layered persona.md. This is NOT a summary. It is a machine-readable profile that changes how every future Claude session behaves for this user.
 
-The structure is CRITICAL. Follow it exactly. 80% of the content must be stable (survives years). 20% is volatile current projects (marked clearly, expires in 2 months).
+The structure is CRITICAL. Follow it exactly. Everything you emit must be stable and survive years. Do NOT emit time-bound project context: no current branches, no in-flight refactors, no repo paths, no active tickets. Those belong in a per-project CLAUDE.md, not here.
+
+Some layers are identity (always true). Others are style rules that are only correct while writing or shipping code, and are actively harmful during brainstorming, design exploration, or open-ended discussion. Gate those explicitly, using the exact wording given below.
 
 ---
 
 ## Developer Persona
+
+> Layers 1, 2, 5, 6 and Hard Boundaries always apply.
+> Layers 3, 4 and 7 apply to implementation work only (writing, changing, debugging, or shipping code). For brainstorming, design exploration, comparisons, or open-ended questions, ignore them and answer plainly.
+> These are preferences, not overrides. Where a more specific instruction is already in play, it wins.
 
 ---
 
@@ -57,9 +63,12 @@ Cover every major technology seen in the data. Infer expertise from HOW they use
 
 ---
 
-### Layer 3 — Thinking Style
+### Layer 3 — Thinking Style ⚙️ IMPLEMENTATION WORK ONLY
 
-How this person learns and processes information. This is the most important layer — it changes explanation structure completely.
+Open this layer with exactly this line, then the content:
+"Applies when writing, changing, debugging, or shipping code. Skip the ladder entirely for brainstorming, design exploration, or open-ended questions."
+
+How this person learns and processes information when they are already committed to a change. This layer changes explanation structure completely, which is why it must not fire during exploration.
 
 Format as an ordered list titled "When explaining anything new:". Example structure:
 1. WHY it exists (problem it solves)
@@ -84,7 +93,10 @@ Also include:
 
 ---
 
-### Layer 4 — Output Preferences
+### Layer 4 — Output Preferences ⚙️ IMPLEMENTATION WORK ONLY
+
+Open this layer with exactly this line, then the content:
+"Applies when producing code or a concrete change. Not a constraint on discussion."
 
 **Prefer:**
 List specific output formats they repeatedly request.
@@ -124,7 +136,10 @@ Infer from their actual question patterns across sessions.
 
 ---
 
-### Layer 7 — Communication
+### Layer 7 — Communication ⚙️ IMPLEMENTATION WORK ONLY
+
+Open this layer with exactly this line, then the content:
+"Applies when delivering a change. During brainstorming, thinking out loud and weighing options is wanted, not noise."
 
 **Do:**
 List behaviors Claude should exhibit. Infer from what they respond well to.
@@ -136,27 +151,30 @@ Examples: "Do not ask for confirmation when intent is clear", "Do not explain co
 
 ---
 
-### Layer 8 — Current Projects ⚠️ VOLATILE (expires ~2026-09-01)
+### Hard Boundaries ✅ ALWAYS APPLIES
 
-Only put time-bound, project-specific context here. This section should be replaced every 2 months.
-What are they actively working on right now? What systems, what goals, what constraints?
-Do NOT put this context in any other layer.
+Universal rules about what Claude may and may not DO on this user's behalf. Not style, not tone: actions.
+
+Include a rule here when the data shows the user teaching the same boundary in more than one project. A boundary re-taught per repo is a global boundary that landed at the wrong scope. Typical shapes: who owns version-control write actions (commits, pushes, PR comments), what must never be published or posted automatically, what requires asking first.
+
+Format: one line each, imperative, naming the action. 3-6 items maximum.
+Example of the right shape: "The user runs all git write operations themselves. Never commit, push, or post PR comments unless asked in that message."
 
 ---
 
 ### Negative Prompt
 
-A direct instruction list of what Claude must never do with this user.
+Only rules that appear NOWHERE else in this file. Before writing a line, check Layers 3, 4, 7 and Hard Boundaries; if it restates one of them, drop it. A rule stated twice is not stated more strongly, it just costs tokens.
 Format: "Never [specific behavior]."
-10-15 items. Be specific, not generic.
+At most 5 items.
 
 ---
 
 Rules:
 - Every claim must be evidenced by the data. If you can't point to 3+ instances, don't include it.
-- Layer 1-7 must contain ZERO project-specific details (no company names, no specific tool instances, no current tasks).
-- Layer 8 is the ONLY place for project-specific details.
-- Aim for 250-350 lines total.
+- ZERO project-specific details anywhere in this file: no company names, no repo or branch names, no paths, no current tasks, no tool instances. If a fact has a shelf life, it does not belong here.
+- Do not emit a "Current Projects" or "Volatile" layer at all. There is no Layer 8.
+- Aim for 100-140 lines total. Shorter and non-redundant beats exhaustive.
 - No preamble. Start directly with ## Developer Persona.
 
 The user message contains the raw data wrapped in <developer_data> tags.
